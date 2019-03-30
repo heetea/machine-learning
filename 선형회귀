@@ -1,0 +1,13 @@
+import pandas as pd
+import statsmodels.formula.api as sm
+from statsmodels.sandbox.regression.predstd import wls_prediction_std
+
+df = pd.read_csv('C:/users/sd33/Downloads/Housing.csv')
+
+df.head()
+
+result = sm.ols(formula= 'price ~ lotsize + bedrooms+ bathrms + stories', data = df).fit()
+
+result.summary(
+
+sns.regplot(x="lotsize", y="price", data=df, order=몇차함수?)
