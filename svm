@@ -1,0 +1,38 @@
+import pandas as pd
+from sklearn import svm, metrics
+from sklearn.model_selection import train_test_split
+from matplotlib import pyplot as plt
+
+# csv 파일로 불러오기
+csv = pd.read_csv("C:/Users/sd33/iris.csv")
+# 데이터프레임 만들기
+df = pd.DataFrame(csv)
+
+### 결측데이터, NaN데이터 처리
+clean_df = df.fillna(df.mean()) # NaN을 처리해줌, Missing, 0, df.mean()
+clean_df[clean_df=='']='Unknown' # str type이지만, 없는 데이터를 처리해줌
+
+# 데이터와 레이블로 분류하기
+data = df[["SepalLength", "SepalWidth", "PetalLength", "PetalWidth"]]
+label = df[["Name"]]
+
+#기술통계
+df.describe()
+#시각화 plot, scatter, hist
+plt.plot(label, data)
+plt.show()
+
+#트레이닝 테스트로 분류
+train_data, test_data, train_label, train_label =\
+ = train_test_split(data, label)
+
+#모델 학슴
+
+clf = svm.SVC()
+
+clf.fit(train_data, train_label) #학습시키기
+results = clf.predict(test_data)#학습된 모델로 결과값 도출
+print(results)
+
+score = metrics.accuracy_score(results, test_label)#결과값 정답률 확인하기
+print("정답률:", score) 
