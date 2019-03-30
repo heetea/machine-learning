@@ -1,0 +1,8 @@
+df.boxplot(column =['price', 'lotsize', 'bedrooms', 'bathrms', 'stories'])
+
+normalize(X)
+sns.pairplot(X, hue=~~)
+
+df.fillna(df.mean())
+df = df.drop(1,0)
+df = df.drop(["x3", "x4"], 1)
