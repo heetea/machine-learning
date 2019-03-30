@@ -6,3 +6,7 @@ sns.pairplot(X, hue=~~)
 df.fillna(df.mean())
 df = df.drop(1,0)
 df = df.drop(["x3", "x4"], 1)
+
+pd.merge(df1,df2 on=key, how = outer)
+left_on, rihgt_on, right_index
+pd.concat([a,b,c], axix=차원, 데이터프레임, ignore_index=true #밑에 붙이기)
