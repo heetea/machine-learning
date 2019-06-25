@@ -1,0 +1,589 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jun 12 14:04:19 2019
+
+@author: Keis
+"""
+#변수 코딩을 위한 라이브러리 불러오기
+import pandas as pd
+import numpy as np
+"""
+------------------------------07년 직업력 데이터--------------------------------
+"""
+#파일 읽기
+job7 = pd.read_pickle('job7.pkl')
+#몇번째 wave에서 온 데이터인지 변수 만들기
+job7["wave"] = 0
+#웨이브에서 몇번째 일자리인지 order 변수 생성, PID로 그룹을 만들고 GJ005y(일자리를 끝낸 년도)를 기준으로 랭크생성하여 변수로 만들기
+
+job7['order']= job7.groupby('PID')['GJ004y'].rank(method='dense')
+
+# 구조변환데이터와 직업력데이터에서 GJ032_2(일자리를 그만둔이유_일용노동자) 벨류값이 다르기 때문에 구조변환데이터를 기준으로 벨류값을 일치시킨다.
+l = [(11,14),(10,13),(9,12),(8,11),(7,10),(6,9),(5,8),(4,7),(3,16),(2,5)]
+for (i,j) in l:
+    job7["GJ032_02"] = job7["GJ032_02"].replace(i,j)
+# 구조변환데이터와 직업력데이터에서 GJ036(자기사업을 하는 이유) 벨류값이 다르기 때문에 구조변환데이터를 기준으로 벨류값을 일치시킨다.
+#데이터가 꼬일수 잊기 때문에 GJ036 복제변수를 하나 생성
+job7['gj036_x'] = job7['GJ036']
+job7['GJ036'] = np.select([job7['gj036_x']==1,job7['gj036_x']==2,job7['gj036_x']==3,job7['gj036_x']==4,
+                          job7['gj036_x']==5,job7['gj036_x']==6,job7['gj036_x']==7,job7['gj036_x']==-8,
+                          job7['gj036_x']==-9],[1,2,3,5,6,7,4,-8,-9], default = np.nan)
+
+# 구조변환데이터와 직업력데이터에서 GJ030(지역변수) 벨류값이 다르기 때문에 구조변환데이터를 기준으로 벨류값을 일치시킨다.
+#데이터가 꼬일수 잊기 때문에 GJ030 복제변수를 하나 생성
+    
+job7['gj030_x'] = job7['GJ030']
+job7['GJ030'] = np.select([job7['gj030_x']==1,job7['gj030_x']==2,job7['gj030_x']==3,job7['gj030_x']==4,
+                          job7['gj030_x']==5,job7['gj030_x']==6,job7['gj030_x']==7,job7['gj030_x']==8,
+                          job7['gj030_x']==9,job7['gj030_x']==10,job7['gj030_x']==11,job7['gj030_x']==12,
+                          job7['gj030_x']==13,job7['gj030_x']==14,job7['gj030_x']==15,job7['gj030_x']==16,
+                          job7['gj030_x']==17,job7['gj030_x']==-8,
+                          job7['gj030_x']==-9],[11,21,22,23,24,25,26,31,32,33,34,35,36,37,38,39,40,-8,-9], default = np.nan)
+#사용하고 싶은 변수만 선택
+job7_1= job7[['PID','wave','order','GJ002','GJ004y','GJ005y','GJ006','GJ011','GJ017','GJ020','GJ022','GJ027','GJ029','GJ030','GJ032_01',
+              'GJ032_03','GJ036','GJ037','GJ038']]
+job7_1.columns = ['pid','wave','order','gj002','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj030','gj032_01',
+                  'gj032_02','gj036','gj037','gj038'] 
+
+#gj032_01과 gj032_02를 합쳐서 gj032_01로 만든다.
+job7_1["gj032_01"] = job7[["GJ032_01", "GJ032_02"]].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+job7_1["gj032_01"] = job7_1["gj032_01"].replace('',np.nan)
+
+job7_1["gj032_02"] = job7[["GJ032_03", "GJ032_04"]].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+job7_1["gj032_02"] = job7_1["gj032_02"].replace('',np.nan)
+
+
+#gj022를 원 단위에서 만원 단위로 바꿔준다.
+job7_1['gj022'] = job7_1['gj022']/10000
+job7_1['gj022'] = job7_1['gj022'].replace(-0.0008,-8)
+job7_1['gj022'] = job7_1['gj022'].replace(-0.0009,-9)
+job7=job7_1
+
+"""
+------------------------------구조변환 데이터-----------------------------------
+"""
+#파일 읽기
+str2 = pd.read_pickle('str2.pkl')
+str3 = pd.read_pickle('str3.pkl')
+str4 = pd.read_pickle('str4.pkl')
+str5 = pd.read_pickle('str5.pkl')
+str6 = pd.read_pickle('str6.pkl')
+
+#변수명 통일하기, 파이선은 대문자와 소문자를 다르게 인식함
+str4.rename(columns={"PID":"pid"},inplace=True)
+str5.rename(columns={"PID":"pid"},inplace=True)
+#b데이터 디코딩하기 spss 에서 불러온 데이터는 byte type 이므로 str이나 int로 바꿔준다.
+for i,j in [(str2,'w02beforejob_wave'),(str3, 'w03beforejob_wave'), (str4,'w04beforejob_wave'),(str5,'w05beforejob_wave'),
+            (str6, 'w06beforejob_wave'),(str2,'w02jobwave'),(str3, 'w03jobwave'), (str4,'w04jobwave'),(str5,'w05jobwave'),
+            (str6, 'w06jobwave')]:
+    par1s = list(i[j])
+    new1 = []
+    for par1 in par1s:
+        k = par1.decode()
+        new1.append(k)
+    i[j]=new1
+
+"""
+--------------------------구조변환 2차 데이터-----------------------------------
+"""
+
+
+#몇번째 wave에서 온 데이터인지 변수 만들기
+str2["wave"] = 2
+
+#사용하고 싶은 변수만 선택하여, 1번째, 2번째, 3번째, 현재 일자리로 데이터를 분할
+str02_01 = str2[['pid','w02job_starty_01','w02job_stopy_01','w02ind_01','w02job_01','w02workday_01','w02worktime_01','w02income_01',
+                 'w02size_c_01','w02familyworker_01','w02quit_reason1_01','w02quit_reason2_01','wave','w02emp_new_01','w02status_01']]
+str02_02 = str2[['pid','w02job_starty_02','w02job_stopy_02','w02ind_02','w02job_02','w02workday_02','w02worktime_02','w02income_02',
+                 'w02size_c_02','w02familyworker_02','w02quit_reason1_02','w02quit_reason2_02','wave','w02emp_new_02','w02status_02']]
+str02_03 = str2[['pid','w02job_starty_03','w02job_stopy_03','w02ind_03','w02job_03','w02workday_02','w02worktime_03','w02income_03',
+                 'w02quit_reason1_03','w02quit_reason2_03','wave','w02emp_new_03','w02status_03']]
+str02_04 = str2[['pid','w02job_starty','w02ind','w02job','w02d_com031','w02d_com032','w02d_com052','w02size_c','w02familyworker','wave',
+                 'w02present_ecotype','w02present_labor','w02emp','w02status','w02jobwave','w02labor_st','w02gender1','w02region1','w02d_com001']]
+
+#결측행 제거하기, 사이일자리, 현재일자리가 없는 경우를 제외한다. pid, wave 변수는 모두 존재하기 때문에 4개 미만의 결측행이 있으면 drop
+str02_01 = str02_01.dropna(thresh=4)
+str02_02 = str02_02.dropna(thresh=4)
+str02_03 = str02_03.dropna(thresh=4)
+str02_04 = str02_04.dropna(thresh=4)
+
+#웨이브에서 몇번째 일자리인지 order 변수 만들기
+#사이 일자리
+str02_01["order"] = 1
+str02_02["order"] = 2
+str02_03["order"] = 3
+#현재 일자리
+str02_04["order"] = 0
+
+str02_04["order_01"] = str02_01["order"]
+str02_04["order_02"] = str02_02["order"]
+str02_04["order_03"] = str02_03["order"]
+
+#'결측치 + 숫자 = 결측치' 이기 때문에 결측치를 0으로 채운다.
+str02_04[["order_01","order_02","order_03"]] = str02_04[["order_01","order_02","order_03"]].fillna(0)
+
+str02_04["order"] = str02_04["order_01"] + str02_04["order_02"] + str02_04["order_03"]
+str02_04["order"] = str02_04["order"].replace(6,4)
+str02_04["order"] = str02_04["order"].replace(1,2)
+str02_04["order"] = str02_04["order"].replace(0,1)
+
+str02_04 = str02_04.drop(["order_01","order_02","order_03"], axis=1)
+#ecotype 현재 결활 상태가 실업자이거나, 비경활인 경우 order = 0
+str02_04.loc[str02_04['w02present_ecotype']>=2,'order']=0
+
+
+####현재 일자리 끝난 시기, 현재 일자리를 그만둔 이유 변수 이후 wave들에서 가져오기
+#현재 현재 wave의 jobawave 변수와 다음 wave 들에서의 beforejob_wave 변수가 일치하는 데이터에서만 가져오기
+
+#3차 데이터에서 해당 변수 데이터만 추출하여 데이터 생성
+sttt = str3[['pid','w03beforejob_wave','w03beforejob_stopy','w03beforejob_quit_reason1','w03beforejob_quit_reason2']]
+#pid를 기준으로 str02_04와 sttt병합(index가 다르기 때문에 일치시켜주기 위함)
+sttt = pd.merge(sttt,str02_04, on ='pid')
+#'w03beforejob_wave'(지난 일자리 이름)와 'w02jobwave'(현재 일자리 이름)가 일치하는 데이터만 추출
+sttt = sttt[(sttt['w03beforejob_wave']==sttt['w02jobwave'])][['pid','w03beforejob_stopy','w03beforejob_quit_reason1',
+            'w03beforejob_quit_reason2']]
+#sttt와 str02_04 병합, how = outer를 하지 않으면 str02_04에서 w02jobwave가 결축차인 경우 삭제 되기 때문에 사용해준다.
+str02_04 = pd.merge(str02_04, sttt, on='pid', how ='outer')
+
+sttt = str4[['pid','w04beforejob_wave','w04beforejob_stopy','w04beforejob_quit_reason1','w04beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str02_04, on ='pid')
+sttt = sttt[(sttt['w04beforejob_wave']==sttt['w02jobwave'])][['pid','w04beforejob_stopy','w04beforejob_quit_reason1',
+            'w04beforejob_quit_reason2']]
+str02_04 = pd.merge(str02_04, sttt, on='pid',how ='outer')
+
+sttt = str5[['pid','w05beforejob_wave','w05beforejob_stopy','w05beforejob_quit_reason1','w05beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str02_04, on ='pid')
+sttt = sttt[(sttt['w05beforejob_wave']==sttt['w02jobwave'])][['pid','w05beforejob_stopy','w05beforejob_quit_reason1',
+            'w05beforejob_quit_reason2']]
+str02_04 = pd.merge(str02_04, sttt, on='pid', how ='outer')
+
+sttt = str6[['pid','w06beforejob_wave','w06beforejob_stopy','w06beforejob_quit_reason1','w06beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str02_04, on ='pid')
+sttt = sttt[(sttt['w06beforejob_wave']==sttt['w02jobwave'])][['pid','w06beforejob_stopy','w06beforejob_quit_reason1',
+            'w06beforejob_quit_reason2']]
+str02_04 = pd.merge(str02_04, sttt, on='pid', how ='outer')
+
+#다른 wave데이터들을 같은 변수기준으로 한 colunm 으로 합친다.
+str02_04["w03beforejob_stopy"] = str02_04[['w03beforejob_stopy','w04beforejob_stopy','w05beforejob_stopy',
+        'w06beforejob_stopy']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+#''값은 Nan으로 일치시켜준다. ''값은 object(객체) 데이터 타입으로 저장되기 때문이다.
+str02_04["w03beforejob_stopy"] = str02_04["w03beforejob_stopy"].replace('',np.NaN)
+#필요 없어진 변수들은 삭제
+str02_04 = str02_04.drop(['w04beforejob_stopy','w05beforejob_stopy','w06beforejob_stopy'], axis=1)
+
+str02_04["w03beforejob_quit_reason1"] = str02_04[['w03beforejob_quit_reason1','w04beforejob_quit_reason1',
+        'w05beforejob_quit_reason1','w06beforejob_quit_reason1']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str02_04["w03beforejob_quit_reason1"] = str02_04["w03beforejob_quit_reason1"].replace('',np.NaN)
+str02_04 = str02_04.drop(['w04beforejob_quit_reason1','w05beforejob_quit_reason1','w06beforejob_quit_reason1'], axis=1)
+
+str02_04["w03beforejob_quit_reason2"] = str02_04[['w03beforejob_quit_reason2','w04beforejob_quit_reason2',
+        'w05beforejob_quit_reason2','w06beforejob_quit_reason2']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str02_04["w03beforejob_quit_reason2"] = str02_04["w03beforejob_quit_reason2"].replace('',np.NaN)
+str02_04 = str02_04.drop(['w04beforejob_quit_reason2','w05beforejob_quit_reason2','w06beforejob_quit_reason2'], axis=1)
+
+#column 변수명을 07년 직업력 설문 기준으로 바꾸기
+str02_01.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave','emp',
+                    'status','order'] 
+str02_02.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave','emp',
+                    'status','order'] 
+str02_03.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj032_01','gj032_02', 'wave','emp','status','order'] 
+str02_04.columns = ['pid','gj004y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','wave','ecotype','labor','emp','status',
+                    'jobwave','labor_st','gender','gj030','gj036','order','gj005y','gj032_01','gj032_02']
+
+
+
+# 구조변환데이터와 직업력데이터에서 산업 대분류 gj006의 벨류값이 다르기 때문에 직업력데이터를 기준으로 벨류값을 바꾼다.
+l = [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6),(8,7),(9,8),(10,9),(11,10),
+     (12,11),(13,12),(14,13),(15,14),(16,15),(17,16),(18,17),(19,18),(20,19)]
+for (i,j) in l:
+    str02_01["gj006"] = str02_01["gj006"].replace(i,j)
+for (i,j) in l:
+    str02_02["gj006"] = str02_02["gj006"].replace(i,j)
+for (i,j) in l:
+    str02_03["gj006"] = str02_03["gj006"].replace(i,j)
+for (i,j) in l:
+    str02_04["gj006"] = str02_04["gj006"].replace(i,j)
+
+#데이터를 열 기준으로 아래로 붙이기
+str02 =pd.concat([str02_01, str02_02, str02_03, str02_04], sort=True)
+
+"""
+--------------------------구조변환 3차 데이터-----------------------------------
+"""
+
+#몇번째 wave에서 온 데이터인지 변수 만들기
+str3["wave"] = 3
+
+#사용하고 싶은 변수만 선택하여, 1번째, 2번째, 3번째, 현재 일자리로 데이터를 분할
+str03_01 = str3[['pid','w03job_starty_01','w03job_stopy_01','w03ind_01','w03job_01','w03workday_01','w03worktime_01','w03income_01',
+                 'w03size_c_01','w03familyworker_01','w03quit_reason1_01','w03quit_reason2_01','wave','w03emp_new_01','w03status_01']]
+str03_02 = str3[['pid','w03job_starty_02','w03job_stopy_02','w03ind_02','w03job_02','w03workday_02','w03worktime_02','w03income_02',
+                 'w03size_c_02','w03familyworker_02','w03quit_reason1_02','w03quit_reason2_02','wave','w03emp_new_02','w03status_02']]
+str03_04 = str3[['pid','w03job_starty','w03ind','w03job','w03d_com031','w03d_com032','w03d_com052','w03size_c','w03familyworker','wave',
+                 'w03present_ecotype','w03present_labor','w03emp','w03status','w03jobwave','w03labor_st','w03gender1','w03region1','w03d_com001']]
+#결측행 제거하기
+str03_01 = str03_01.dropna(thresh=4)
+str03_02 = str03_02.dropna(thresh=4)
+
+str03_04 = str03_04.dropna(thresh=4)
+
+#웨이브에서 몇번째 일자리인지 order 변수 만들기
+str03_01["order"] = 1
+str03_02["order"] = 2
+
+str03_04["order"] = 0
+
+str03_04["order_01"] = str03_01["order"]
+str03_04["order_02"] = str03_02["order"]
+
+
+str03_04[["order_01","order_02"]] = str03_04[["order_01","order_02"]].fillna(0)
+
+str03_04["order"] = str03_04["order_01"] + str03_04["order_02"]
+str03_04["order"] = str03_04["order"].replace(1,2)
+str03_04["order"] = str03_04["order"].replace(0,1)
+
+str03_04 = str03_04.drop(["order_01","order_02"], axis=1)
+str03_04.loc[str03_04['w03present_ecotype']>=2,'order']=0
+
+#현재 일자리 끝난 시기, 현재 일자리를 그만둔 이유 변수 다음 wave에서 가져오기
+#현재 현재 wave의 jobawave 변수와 다음 wave 들에서의 beforejob_wave 변수가 일치하는 데이터에서만 가져오기
+
+sttt = str4[['pid','w04beforejob_wave','w04beforejob_stopy','w04beforejob_quit_reason1','w04beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str03_04, on ='pid')
+sttt = sttt[(sttt['w04beforejob_wave']==sttt['w03jobwave'])][['pid','w04beforejob_stopy','w04beforejob_quit_reason1',
+            'w04beforejob_quit_reason2']]
+str03_04 = pd.merge(str03_04, sttt, on='pid',how ='outer')
+
+sttt = str5[['pid','w05beforejob_wave','w05beforejob_stopy','w05beforejob_quit_reason1','w05beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str03_04, on ='pid')
+sttt = sttt[(sttt['w05beforejob_wave']==sttt['w03jobwave'])][['pid','w05beforejob_stopy','w05beforejob_quit_reason1',
+            'w05beforejob_quit_reason2']]
+str03_04 = pd.merge(str03_04, sttt, on='pid', how ='outer')
+
+sttt = str6[['pid','w06beforejob_wave','w06beforejob_stopy','w06beforejob_quit_reason1','w06beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str03_04, on ='pid')
+sttt = sttt[(sttt['w06beforejob_wave']==sttt['w03jobwave'])][['pid','w06beforejob_stopy','w06beforejob_quit_reason1',
+            'w06beforejob_quit_reason2']]
+str03_04 = pd.merge(str03_04, sttt, on='pid', how ='outer')
+
+str03_04["w04beforejob_stopy"] = str03_04[['w04beforejob_stopy','w05beforejob_stopy',
+        'w06beforejob_stopy']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str03_04["w04beforejob_stopy"] = str03_04["w04beforejob_stopy"].replace('',np.NaN)
+str03_04 = str03_04.drop(['w05beforejob_stopy','w06beforejob_stopy'], axis=1)
+
+str03_04["w04beforejob_quit_reason1"] = str03_04[['w04beforejob_quit_reason1','w05beforejob_quit_reason1',
+        'w06beforejob_quit_reason1']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str03_04["w04beforejob_quit_reason1"] = str03_04["w04beforejob_quit_reason1"].replace('',np.NaN)
+str03_04 = str03_04.drop(['w05beforejob_quit_reason1','w06beforejob_quit_reason1'], axis=1)
+
+str03_04["w04beforejob_quit_reason2"] = str03_04[['w04beforejob_quit_reason2','w05beforejob_quit_reason2',
+        'w06beforejob_quit_reason2']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str03_04["w04beforejob_quit_reason2"] = str03_04["w04beforejob_quit_reason2"].replace('',np.NaN)
+str03_04 = str03_04.drop(['w05beforejob_quit_reason2','w06beforejob_quit_reason2'], axis=1)
+
+
+#column 변수명을 07년 직업력 설문 기준으로 바꾸기
+str03_01.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave',
+                    'emp','status','order'] 
+str03_02.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave',
+                    'emp','status','order'] 
+
+str03_04.columns = ['pid','gj004y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','wave','ecotype','labor','emp','status',
+                    'jobwave','labor_st','gender','gj030','gj036','order','gj005y','gj032_01','gj032_02']
+
+
+
+
+
+# 구조변환데이터와 직업력데이터에서 산업 대분류 gj006의 벨류값이 다르기 때문에 직업력데이터를 기준으로 벨류값을 바꾼다.
+l = [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6),(8,7),(9,8),(10,9),(11,10),
+     (12,11),(13,12),(14,13),(15,14),(16,15),(17,16),(18,17),(19,18),(20,19)]
+for (i,j) in l:
+    str03_01["gj006"] = str03_01["gj006"].replace(i,j)
+for (i,j) in l:
+    str03_02["gj006"] = str03_02["gj006"].replace(i,j)
+
+for (i,j) in l:
+    str03_04["gj006"] = str03_04["gj006"].replace(i,j)
+
+#데이터를 열 기준으로 아래로 붙이기    
+str03 =pd.concat([str03_01, str03_02, str03_04], sort=True)
+
+"""
+--------------------------구조변환 4차 데이터-----------------------------------
+"""
+
+#몇번째 wave에서 온 데이터인지 변수 만들기
+str4["wave"] = 4
+
+#사용하고 싶은 변수만 선택하여, 1번째, 2번째, 3번째, 현재 일자리로 데이터를 분할
+str04_01 = str4[['pid','w04job_starty_01','w04job_stopy_01','w04ind_01','w04job_01','w04workday_01','w04worktime_01','w04income_01',
+                 'w04size_c_01','w04familyworker_01','w04quit_reason1_01','w04quit_reason2_01','wave','w04emp_new_01','w04status_01']]
+str04_02 = str4[['pid','w04job_starty_02','w04job_stopy_02','w04ind_02','w04job_02','w04workday_02','w04worktime_02','w04income_02',
+                 'w04size_c_02','w04familyworker_02','w04quit_reason1_02','w04quit_reason2_02','wave','w04emp_new_02','w04status_02']]
+str04_04 = str4[['pid','w04job_starty','w04ind','w04job','w04d_com031','w04d_com032','w04d_com052','w04size_c','w04familyworker','wave',
+                 'w04present_ecotype','w04present_labor','w04emp','w04status','w04jobwave','w04labor_st','w04gender1','w04region1','w04d_com001']]
+
+#결측행 제거하기
+str04_01 = str04_01.dropna(thresh=4)
+str04_02 = str04_02.dropna(thresh=4)
+
+str04_04 = str04_04.dropna(thresh=4)
+
+#웨이브에서 몇번째 일자리인지 order 변수 만들기
+str04_01["order"] = 1
+str04_02["order"] = 2
+
+str04_04["order"] = 0
+
+str04_04["order_01"] = str04_01["order"]
+str04_04["order_02"] = str04_02["order"]
+
+
+str04_04[["order_01","order_02"]] = str04_04[["order_01","order_02"]].fillna(0)
+
+str04_04["order"] = str04_04["order_01"] + str04_04["order_02"]
+str04_04["order"] = str04_04["order"].replace(1,2)
+str04_04["order"] = str04_04["order"].replace(0,1)
+
+str04_04 = str04_04.drop(["order_01","order_02"], axis=1)
+str04_04.loc[str04_04['w04present_ecotype']>=2,'order']=0
+
+#현재 일자리 끝난 시기, 현재 일자리를 그만둔 이유 변수 다음 wave에서 가져오기
+#현재 현재 wave의 jobawave 변수와 다음 wave 들에서의 beforejob_wave 변수가 일치하는 데이터에서만 가져오기
+sttt = str5[['pid','w05beforejob_wave','w05beforejob_stopy','w05beforejob_quit_reason1','w05beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str04_04, on ='pid')
+sttt = sttt[(sttt['w05beforejob_wave']==sttt['w04jobwave'])][['pid','w05beforejob_stopy','w05beforejob_quit_reason1',
+            'w05beforejob_quit_reason2']]
+str04_04 = pd.merge(str04_04, sttt, on='pid', how ='outer')
+
+sttt = str6[['pid','w06beforejob_wave','w06beforejob_stopy','w06beforejob_quit_reason1','w06beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str04_04, on ='pid')
+sttt = sttt[(sttt['w06beforejob_wave']==sttt['w04jobwave'])][['pid','w06beforejob_stopy','w06beforejob_quit_reason1',
+            'w06beforejob_quit_reason2']]
+str04_04 = pd.merge(str04_04, sttt, on='pid', how ='outer')
+
+str04_04["w05beforejob_stopy"] = str04_04[['w05beforejob_stopy',
+        'w06beforejob_stopy']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str04_04["w05beforejob_stopy"] = str04_04["w05beforejob_stopy"].replace('',np.NaN)
+str04_04 = str04_04.drop(['w06beforejob_stopy'], axis=1)
+
+str04_04["w05beforejob_quit_reason1"] = str04_04[['w05beforejob_quit_reason1',
+        'w06beforejob_quit_reason1']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str04_04["w05beforejob_quit_reason1"] = str04_04["w05beforejob_quit_reason1"].replace('',np.NaN)
+str04_04 = str04_04.drop(['w06beforejob_quit_reason1'], axis=1)
+
+str04_04["w05beforejob_quit_reason2"] = str04_04[['w05beforejob_quit_reason2',
+        'w06beforejob_quit_reason2']].apply(lambda x: ','.join(x.dropna().astype(int).astype(str)), axis =1)
+str04_04["w05beforejob_quit_reason2"] = str04_04["w05beforejob_quit_reason2"].replace('',np.NaN)
+str04_04 = str04_04.drop(['w06beforejob_quit_reason2'], axis=1)
+
+#column 변수명을 07년 직업력 설문 기준으로 바꾸기
+str04_01.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave',
+                    'emp','status','order'] 
+str04_02.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave',
+                    'emp','status','order'] 
+
+str04_04.columns = ['pid','gj004y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','wave','ecotype','labor','emp','status',
+                    'jobwave','labor_st','gender','gj030','gj036','order','gj005y','gj032_01','gj032_02']
+
+
+
+
+
+# 구조변환데이터와 직업력데이터에서 산업 대분류 gj006의 벨류값이 다르기 때문에 직업력데이터를 기준으로 벨류값을 바꾼다.
+l = [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6),(8,7),(9,8),(10,9),(11,10),
+     (12,11),(13,12),(14,13),(15,14),(16,15),(17,16),(18,17),(19,18),(20,19)]
+for (i,j) in l:
+    str04_01["gj006"] = str04_01["gj006"].replace(i,j)
+for (i,j) in l:
+    str04_02["gj006"] = str04_02["gj006"].replace(i,j)
+
+for (i,j) in l:
+    str04_04["gj006"] = str04_04["gj006"].replace(i,j)
+
+#데이터를 열 기준으로 아래로 붙이기
+str04 =pd.concat([str04_01, str04_02, str04_04], sort=True)
+
+"""
+--------------------------구조변환 5차 데이터-----------------------------------
+"""
+
+#몇번째 wave에서 온 데이터인지 변수 만들기
+str5["wave"] = 5
+
+#사용하고 싶은 변수만 선택하여, 1번째, 2번째, 3번째, 현재 일자리로 데이터를 분할
+str05_01 = str5[['pid','w05job_starty_01','w05job_stopy_01','w05ind_01','w05job_01','w05workday_01','w05worktime_01','w05income_01',
+                 'w05size_c_01','w05familyworker_01','w05quit_reason1_01','w05quit_reason2_01','wave','w05emp_new_01','w05status_01']]
+str05_02 = str5[['pid','w05job_starty_02','w05job_stopy_02','w05ind_02','w05job_02','w05workday_02','w05worktime_02','w05income_02',
+                 'w05size_c_02','w05familyworker_02','w05quit_reason1_02','w05quit_reason2_02','wave','w05emp_new_02','w05status_02']]
+str05_04 = str5[['pid','w05job_starty','w05ind','w05job','w05d_com031','w05d_com032','w05d_com052','w05size_c','w05familyworker','wave',
+                 'w05present_ecotype','w05present_labor','w05emp','w05status', 'w05jobwave','w05labor_st','w05gender1','w05region1','w05d_com001']]
+
+#결측행 제거하기
+str05_01 = str05_01.dropna(thresh=4)
+str05_02 = str05_02.dropna(thresh=4)
+
+str05_04 = str05_04.dropna(thresh=4)
+
+#웨이브에서 몇번째 일자리인지 order 변수 만들기
+str05_01["order"] = 1
+str05_02["order"] = 2
+
+str05_04["order"] = 0
+
+str05_04["order_01"] = str05_01["order"]
+str05_04["order_02"] = str05_02["order"]
+
+
+str05_04[["order_01","order_02"]] = str05_04[["order_01","order_02"]].fillna(0)
+
+str05_04["order"] = str05_04["order_01"] + str05_04["order_02"]
+str05_04["order"] = str05_04["order"].replace(1,2)
+str05_04["order"] = str05_04["order"].replace(0,1)
+
+str05_04 = str05_04.drop(["order_01","order_02"], axis=1)
+str05_04.loc[str05_04['w05present_ecotype']>=2,'order']=0
+
+#현재 일자리 끝난 시기, 현재 일자리를 그만둔 이유 변수 다음 wave에서 가져오기
+#현재 현재 wave의 jobawave 변수와 다음 wave 들에서의 beforejob_wave 변수가 일치하는 데이터에서만 가져오기
+
+sttt = str6[['pid','w06beforejob_wave','w06beforejob_stopy','w06beforejob_quit_reason1','w06beforejob_quit_reason2']]
+sttt = pd.merge(sttt,str05_04, on ='pid')
+sttt = sttt[(sttt['w06beforejob_wave']==sttt['w05jobwave'])][['pid','w06beforejob_stopy','w06beforejob_quit_reason1',
+            'w06beforejob_quit_reason2']]
+str05_04 = pd.merge(str05_04, sttt, on='pid', how ='outer')
+
+str05_04["w06beforejob_stopy"] = str05_04["w06beforejob_stopy"].replace('',np.NaN)
+
+str05_04["w06beforejob_quit_reason1"] = str05_04["w06beforejob_quit_reason1"].replace('',np.NaN)
+
+str05_04["w06beforejob_quit_reason2"] = str05_04["w06beforejob_quit_reason2"].replace('',np.NaN)
+
+
+#column 변수명을 07년 직업력 설문 기준으로 바꾸기
+str05_01.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave',
+                    'emp','status','order'] 
+str05_02.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02','wave',
+                    'emp','status','order'] 
+
+str05_04.columns = ['pid','gj004y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','wave','ecotype','labor','emp',
+                    'status','jobwave','labor_st','gender','gj030','gj036','order','gj005y','gj032_01','gj032_02']
+
+
+
+# 구조변환데이터와 직업력데이터에서 산업 대분류 gj006의 벨류값이 다르기 때문에 직업력데이터를 기준으로 벨류값을 바꾼다.
+l = [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6),(8,7),(9,8),(10,9),(11,10),
+     (12,11),(13,12),(14,13),(15,14),(16,15),(17,16),(18,17),(19,18),(20,19)]
+for (i,j) in l:
+    str05_01["gj006"] = str05_01["gj006"].replace(i,j)
+for (i,j) in l:
+    str05_02["gj006"] = str05_02["gj006"].replace(i,j)
+
+for (i,j) in l:
+    str05_04["gj006"] = str05_04["gj006"].replace(i,j)
+
+#데이터를 열 기준으로 아래로 붙이기    
+str05 =pd.concat([str05_01, str05_02, str05_04], sort=True)
+
+"""
+--------------------------구조변환 6차 데이터-----------------------------------
+"""
+
+
+#몇번째 wave에서 온 데이터인지 변수 만들기
+str6["wave"] = 6
+
+#사용하고 싶은 변수만 선택하여, 1번째, 2번째, 3번째, 현재 일자리로 데이터를 분할
+str06_01 = str6[['pid','w06job_starty_01','w06job_stopy_01','w06ind_01','w06job_01','w06workday_01','w06worktime_01','w06income_01',
+                 'w06size_c_01','w06familyworker_01','w06quit_reason1_01','w06quit_reason2_01','wave','w06emp_new_01','w06status_01']]
+str06_02 = str6[['pid','w06job_starty_02','w06job_stopy_02','w06ind_02','w06job_02','w06workday_02','w06worktime_02','w06income_02',
+                 'w06size_c_02','w06familyworker_02','w06quit_reason1_02','w06quit_reason2_02','wave','w06emp_new_02','w06status_02']]
+str06_04 = str6[['pid','w06job_starty','w06ind','w06job','w06d_com031','w06d_com032','w06d_com052','w06size_c','w06familyworker','wave',
+                 'w06present_ecotype','w06present_labor','w06emp','w06status','w06jobwave','w06labor_st','w06gender1','w06region1','w06d_com001']]
+
+#결측행 제거하기
+str06_01 = str06_01.dropna(thresh=4)
+str06_02 = str06_02.dropna(thresh=4)
+
+#column 변수명을 07년 직업력 설문 기준으로 바꾸기
+str06_01.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02',
+                    'wave','emp','status'] 
+str06_02.columns = ['pid','gj004y','gj005y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','gj032_01','gj032_02',
+                    'wave','emp','status'] 
+
+str06_04.columns = ['pid','gj004y','gj006','gj011','gj017','gj020','gj022','gj027','gj029','wave','ecotype','labor','emp',
+                    'status','jobwave','labor_st','gj030','gender','gj036']
+
+
+#웨이브에서 몇번째 일자리인지 order 변수 만들기
+str06_01["order"] = 1
+str06_02["order"] = 2
+
+str06_04["order"] = 0
+
+str06_04["order_01"] = str06_01["order"]
+str06_04["order_02"] = str06_02["order"]
+
+
+str06_04[["order_01","order_02"]] = str06_04[["order_01","order_02"]].fillna(0)
+
+str06_04["order"] = str06_04["order_01"] + str06_04["order_02"]
+str06_04["order"] = str06_04["order"].replace(1,2)
+str06_04["order"] = str06_04["order"].replace(0,1)
+
+str06_04 = str06_04.drop(["order_01","order_02"], axis=1)
+str06_04.loc[str06_04['ecotype']>=2,'order']=0
+
+# 구조변환데이터와 직업력데이터에서 산업 대분류 gj006의 벨류값이 다르기 때문에 직업력데이터를 기준으로 벨류값을 바꾼다.
+l = [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6),(8,7),(9,8),(10,9),(11,10),
+     (12,11),(13,12),(14,13),(15,14),(16,15),(17,16),(18,17),(19,18),(20,19)]
+for (i,j) in l:
+    str06_01["gj006"] = str06_01["gj006"].replace(i,j)
+for (i,j) in l:
+    str06_02["gj006"] = str06_02["gj006"].replace(i,j)
+
+for (i,j) in l:
+    str06_04["gj006"] = str06_04["gj006"].replace(i,j)
+"""
+------------------------전체 데이터 병합, 저장----------------------------------
+"""
+#데이터를 열 기준으로 아래로 붙이기 
+str06 =pd.concat([str06_01, str06_02, str06_04], sort=True)
+
+#전체데이터 합치기
+job = pd.concat([job7,str02,str03,str04,str05,str06], sort=True)
+job = job.replace('', np.nan)
+
+
+#전체 데이터에서의 일자리 순서 변수 만들기
+
+job = job.sort_values(['pid','wave','order'], ascending=[True,True,True])
+#인덱스 제설정
+job = job.reset_index(drop=True)
+job['kk']= job.wave*100+job.order
+job.loc[job.order==0,'kk']=np.nan
+job['totalorder_k']= job.groupby('pid')['kk'].rank(method='dense')
+
+l = job.loc[job.jobwave.notnull()].index
+l = list(l)
+m = l[1:]
+for i,j in l,m:
+    k = job.loc[job.index==i]['jobwave']
+    k = list(k.values)
+    k_2 = job.loc[job.index==j]['jobwave']
+    k_2 = list(k_2.values)
+    kk = job.loc[job.index==i]['pid']
+    kk = list(kk.values)
+    kk_2 = job.loc[job.index==h]['pid']
+    kk_2 = list(kk_2.values)
+    if k==k_2:
+        if kk==kk_2:
+            job.loc[i+1,'totalorder_k']=job.loc[i,'totalorder_k']
+    
+job['totalorder']=job.groupby('pid')['totalorder_k'].rank(method='dense')
+job= job.drop(['kk','totalorder_k'],axis=1)
+#저장
+job.to_pickle('job.pkl')
+job.to_csv('job.csv')
